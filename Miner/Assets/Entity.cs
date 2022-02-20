@@ -5,16 +5,23 @@ using UnityEngine;
 public class Entity : MonoBehaviour
 {
 
-    float speed = 10;
+    float speed = 1.75f;
     List<Sprite> directions = new List<Sprite>();
     bool inControl = false;
     bool up = false;
     bool down = false;
     bool left = false;
     bool right = false;
+    bool grabable = false;
+
+    List<Entity> hoveredEntity = new List<Entity>();
+    GameObject grabbedEntity;
+
+    public string ent = "NONASSIGNED";
 
     public void InitializeAs(string entity, bool controls)
     {
+        ent = entity;
         inControl = controls;
         if (entity == "Player")
         {
@@ -27,6 +34,34 @@ public class Entity : MonoBehaviour
 
             this.GetComponent<SpriteRenderer>().sprite = directions[0];
             this.GetComponent<Rigidbody2D>().gravityScale = 0;
+            this.gameObject.AddComponent<BoxCollider2D>();
+        }
+        else if (entity == "Pot")
+        {
+            this.gameObject.AddComponent<SpriteRenderer>();
+            this.gameObject.AddComponent<Rigidbody2D>();
+
+            directions.Add(Resources.Load<Sprite>("pot"));
+
+            this.GetComponent<SpriteRenderer>().sprite = directions[0];
+            this.GetComponent<SpriteRenderer>().sortingOrder = 1;
+            this.GetComponent<Rigidbody2D>().gravityScale = 0;
+            this.gameObject.AddComponent<BoxCollider2D>();
+            this.gameObject.GetComponent<BoxCollider2D>().isTrigger = true;
+        }
+        else if (entity == "Item_Red")
+        {
+            this.gameObject.AddComponent<SpriteRenderer>();
+
+            directions.Add(Resources.Load<Sprite>("item"));
+
+            this.GetComponent<SpriteRenderer>().sprite = directions[0];
+            this.GetComponent<SpriteRenderer>().sortingOrder = 1;
+            this.GetComponent<SpriteRenderer>().color = new Color(1, 0, 0);
+            this.gameObject.AddComponent<BoxCollider2D>();
+            this.gameObject.GetComponent<BoxCollider2D>().isTrigger = true;
+
+            grabable = true;
         }
     }
 
@@ -104,6 +139,36 @@ public class Entity : MonoBehaviour
             vel.x += speed;
         }
 
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            print(1);
+            if (grabbedEntity == null)
+            {
+                print(2);
+                if (hoveredEntity != null)
+                {
+                    print(3);
+                    if (hoveredEntity[0].grabable == true)
+                    {
+                        print(4);
+                        //Pickup
+                        grabbedEntity = hoveredEntity[0].gameObject;
+                        grabbedEntity.transform.position = new Vector3(this.transform.position.x, this.transform.position.y + .25f, 1);
+                        grabbedEntity.transform.parent = this.gameObject.transform;
+                    }
+                }
+            }
+            else
+            {
+                print(5);
+                //Drop
+                grabbedEntity.transform.position = new Vector3(grabbedEntity.transform.position.x, grabbedEntity.transform.position.y - .25f, 1);
+                grabbedEntity.transform.parent = null;
+                hoveredEntity.Remove(grabbedEntity.GetComponent<Entity>());
+                grabbedEntity = null;
+            }
+        }
+
         if (vel.x > 0)
         {
             this.GetComponent<SpriteRenderer>().sprite = directions[2];
@@ -127,5 +192,21 @@ public class Entity : MonoBehaviour
         }
 
         physics.velocity = vel;
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.GetComponent<Entity>() != null && !hoveredEntity.Contains(collision.gameObject.GetComponent<Entity>()))
+        {
+            hoveredEntity.Add(collision.gameObject.GetComponent<Entity>());
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (hoveredEntity.Contains(collision.gameObject.GetComponent<Entity>()))
+        {
+            hoveredEntity.Remove(collision.gameObject.GetComponent<Entity>());
+        }
     }
 }
